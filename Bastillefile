@@ -1,0 +1,32 @@
+ARG APP_NAME=zwavejs2mqtt
+ARG PKG_INSTALL="git-lite node14 npm-node14 yarn-node14"
+ARG GIT_REPO="zwave-js/zwavejs2mqtt"
+ARG GIT_URL="https://github.com/${GIT_REPO}.git"
+ARG GIT_LATEST="$(curl -s https://api.github.com/repos/${GIT_REPO}/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')"
+# Tested with v5.12.0
+ARG GIT_TAG="${GIT_LATEST}"
+
+ARG APP_DIR="/usr/local/share/${APP_NAME}"
+ARG DATA_DIR="/usr/local/etc/${APP_NAME}"
+
+ARG BUILD_REQ="yarn install"
+ARG BUILD_RUN="yarn run build"
+
+# Path on Jail Host to mount as $DATA_DIR. Used when uncommenting MOUNT directive below.
+ARG DATA_DIR_HOST="/data/${APP_NAME}"
+
+PKG "${PKG_INSTALL}"
+CMD cd /usr/local/bin/; ln -s python3.8 python
+CMD npm install typescript -g
+CMD git clone ${GIT_URL} ${APP_DIR}
+CMD cd ${APP_DIR}; git checkout tags/${GIT_TAG}
+CMD cd ${APP_DIR}; "${BUILD_REQ}"
+CMD cd ${APP_DIR}; "${BUILD_RUN}"
+SYSRC ${APP_NAME}_app_dir=${APP_DIR}
+SYSRC ${APP_NAME}_data_dir=${DATA_DIR}
+SYSRC ${APP_NAME}_enable=YES
+# Uncomment to store persistent data outside of the jail in ${DATA_DIR_HOST}.
+#CMD mkdir -p ${DATA_DIR}
+#MOUNT ${DATA_DIR_HOST} ${DATA_DIR} nullfs rw 0 0
+CP usr /
+SERVICE ${APP_NAME} start
